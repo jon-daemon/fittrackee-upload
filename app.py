@@ -4,6 +4,7 @@
 # 2025-08-19: added notes in imported workout, sport_id(default: 1) and description
 # 2025-08-20: added title in request
 # 2025-09-03: change name of variables
+# 2025-09-18: allow gpx, unicode filename
 
 """ Functions
 handle_upload()
@@ -27,6 +28,7 @@ from datetime import datetime
 import json
 import time
 import jwt
+from unidecode import unidecode
 
 from dotenv import load_dotenv
 load_dotenv()  # Takes vars from .env
@@ -39,7 +41,7 @@ UPLOAD_FOLDER = os.getenv("UPLOAD_DIR")
 IMPORTED_DIR = os.path.join(UPLOAD_FOLDER, "imported")
 FAILED_DIR = os.path.join(UPLOAD_FOLDER, "failed")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-ALLOWED_EXTENSIONS = {'tcx'}
+ALLOWED_EXTENSIONS = {'tcx', 'gpx'}
 SECRET_TOKEN = os.getenv("SECRET_TOKEN")
 
 # Pushover configuration
@@ -70,9 +72,9 @@ FITTRACKEE_SPORT_FALLBACK = 1
 """
 
 # Set up logging
-UPLOAD_FOLDER = os.getenv("LOG_DIR")
+LOG_FOLDER = os.getenv("LOG_DIR")
 os.makedirs(LOG_FOLDER, exist_ok=True)
-LOG_FILE = os.path.join(LOG_FOLDER, 'tcx_uploader.log')
+LOG_FILE = os.path.join(LOG_FOLDER, 'fit_uploader.log')
 
 # Create a rotating file handler (max 5 files, 1MB each)
 handler = RotatingFileHandler(LOG_FILE, maxBytes=1024*1024, backupCount=5)
@@ -239,8 +241,8 @@ def handle_fittrackee_upload(file_path, filename, itemSport, itemTitle=None, ite
             app.logger.error(f"FitTrackee upload exception: {str(e)}")
     
     # Prepare notification
-    notification_title = "✅ Upload TCX" if not ENABLE_FITTRACKEE else (
-        "✅ Upload TCX FitTrackee" if fittrackee_status['success'] else "⚠️ Upload TCX on Server"
+    notification_title = "✅ Upload Workout" if not ENABLE_FITTRACKEE else (
+        "✅ Upload FitTrackee" if fittrackee_status['success'] else "⚠️ Upload Workout on Server"
     )
     
     # Build message based on upload type
@@ -338,9 +340,9 @@ def handle_upload():
     try:
         # Get filename
         if is_url_upload:
-            filename = secure_filename(os.path.basename(urlparse(url).path)) or "downloaded_file.tcx"
+            filename = secure_filename(unidecode(os.path.basename(urlparse(url).path))) or "downloaded_file.tcx"
         else:
-            filename = secure_filename(file.filename)
+            filename = secure_filename(unidecode(file.filename))
             if not allowed_file(filename):
                 error_msg = f"Invalid file type attempted: {filename}"
                 app.logger.error(f"{log_prefix} {error_msg}")
@@ -459,5 +461,5 @@ def handle_upload():
         return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':
-    app.logger.info("Starting TCX Uploader service")
+    app.logger.info("Starting Workout Uploader service")
     app.run(host='0.0.0.0', port=5001)  # Allow external connections
