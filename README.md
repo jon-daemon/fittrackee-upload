@@ -27,7 +27,7 @@ curl -X POST \
   https://fittrackee-upload.mydomain.com/upload_from_url
 ```
 
-.venv contents
+.env contents
 ```
 UPLOAD_DIR="/home/username/upload_dir"
 LOG_DIR="/home/username/log_dir"
